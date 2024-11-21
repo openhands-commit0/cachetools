@@ -70,4 +70,10 @@ def ttl_cache(maxsize=128, ttl=600, timer=time.monotonic, typed=False):
     up to `maxsize` results based on a Least Recently Used (LRU)
     algorithm with a per-item time-to-live (TTL) value.
     """
-    pass
+    lock = RLock()
+    key_func = keys.typedkey if typed else keys.hashkey
+    if maxsize is None:
+        cache = _UnboundTTLCache(ttl, timer)
+    else:
+        cache = TTLCache(maxsize, ttl, timer)
+    return cached(cache=cache, key=key_func, lock=lock)
