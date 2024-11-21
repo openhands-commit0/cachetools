@@ -24,6 +24,8 @@ import time
 
 from . import keys
 
+_CacheInfo = collections.namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
+
 
 class _DefaultSize:
     __slots__ = ()
