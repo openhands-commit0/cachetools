@@ -637,152 +637,103 @@ _CacheInfo = collections.namedtuple(
 )
 
 
-def cached(cache, key=keys.hashkey, lock=None, info=False):
+def cached(cache, key=keys.hashkey, lock=None, info=True):
     """Decorator to wrap a function with a memoizing callable that saves
     results in a cache.
 
     """
 
     def decorator(func):
-        if info:
-            hits = misses = 0
+        hits = misses = 0
 
-            if isinstance(cache, Cache):
+        if isinstance(cache, Cache):
 
-                def getinfo():
-                    nonlocal hits, misses
-                    return _CacheInfo(hits, misses, cache.maxsize, cache.currsize)
+            def getinfo():
+                nonlocal hits, misses
+                return _CacheInfo(hits, misses, cache.maxsize, cache.currsize)
 
-            elif isinstance(cache, collections.abc.Mapping):
+        elif isinstance(cache, collections.abc.Mapping):
 
-                def getinfo():
-                    nonlocal hits, misses
-                    return _CacheInfo(hits, misses, None, len(cache))
+            def getinfo():
+                nonlocal hits, misses
+                return _CacheInfo(hits, misses, None, len(cache))
 
-            else:
+        else:
 
-                def getinfo():
-                    nonlocal hits, misses
-                    return _CacheInfo(hits, misses, 0, 0)
+            def getinfo():
+                nonlocal hits, misses
+                return _CacheInfo(hits, misses, 0, 0)
 
-            if cache is None:
+        if cache is None:
 
-                def wrapper(*args, **kwargs):
-                    nonlocal misses
+            def wrapper(*args, **kwargs):
+                nonlocal misses
+                misses += 1
+                return func(*args, **kwargs)
+
+            def cache_clear():
+                nonlocal hits, misses
+                hits = misses = 0
+
+            cache_info = getinfo
+
+        elif lock is None:
+
+            def wrapper(*args, **kwargs):
+                nonlocal hits, misses
+                k = key(*args, **kwargs)
+                try:
+                    result = cache[k]
+                    hits += 1
+                    return result
+                except KeyError:
                     misses += 1
-                    return func(*args, **kwargs)
+                v = func(*args, **kwargs)
+                try:
+                    cache[k] = v
+                except ValueError:
+                    pass  # value too large
+                return v
 
-                def cache_clear():
-                    nonlocal hits, misses
-                    hits = misses = 0
+            def cache_clear():
+                nonlocal hits, misses
+                cache.clear()
+                hits = misses = 0
 
-                cache_info = getinfo
+            cache_info = getinfo
 
-            elif lock is None:
+        else:
 
-                def wrapper(*args, **kwargs):
-                    nonlocal hits, misses
-                    k = key(*args, **kwargs)
-                    try:
+            def wrapper(*args, **kwargs):
+                nonlocal hits, misses
+                k = key(*args, **kwargs)
+                try:
+                    with lock:
                         result = cache[k]
                         hits += 1
                         return result
-                    except KeyError:
+                except KeyError:
+                    with lock:
                         misses += 1
-                    v = func(*args, **kwargs)
-                    try:
-                        cache[k] = v
-                    except ValueError:
-                        pass  # value too large
-                    return v
+                v = func(*args, **kwargs)
+                # in case of a race, prefer the item already in the cache
+                try:
+                    with lock:
+                        return cache.setdefault(k, v)
+                except ValueError:
+                    return v  # value too large
 
-                def cache_clear():
-                    nonlocal hits, misses
+            def cache_clear():
+                nonlocal hits, misses
+                with lock:
                     cache.clear()
                     hits = misses = 0
 
-                cache_info = getinfo
+            def cache_info():
+                with lock:
+                    return getinfo()
 
-            else:
-
-                def wrapper(*args, **kwargs):
-                    nonlocal hits, misses
-                    k = key(*args, **kwargs)
-                    try:
-                        with lock:
-                            result = cache[k]
-                            hits += 1
-                            return result
-                    except KeyError:
-                        with lock:
-                            misses += 1
-                    v = func(*args, **kwargs)
-                    # in case of a race, prefer the item already in the cache
-                    try:
-                        with lock:
-                            return cache.setdefault(k, v)
-                    except ValueError:
-                        return v  # value too large
-
-                def cache_clear():
-                    nonlocal hits, misses
-                    with lock:
-                        cache.clear()
-                        hits = misses = 0
-
-                def cache_info():
-                    with lock:
-                        return getinfo()
-
-        else:
-            if cache is None:
-
-                def wrapper(*args, **kwargs):
-                    return func(*args, **kwargs)
-
-                def cache_clear():
-                    pass
-
-            elif lock is None:
-
-                def wrapper(*args, **kwargs):
-                    k = key(*args, **kwargs)
-                    try:
-                        return cache[k]
-                    except KeyError:
-                        pass  # key not found
-                    v = func(*args, **kwargs)
-                    try:
-                        cache[k] = v
-                    except ValueError:
-                        pass  # value too large
-                    return v
-
-                def cache_clear():
-                    cache.clear()
-
-            else:
-
-                def wrapper(*args, **kwargs):
-                    k = key(*args, **kwargs)
-                    try:
-                        with lock:
-                            return cache[k]
-                    except KeyError:
-                        pass  # key not found
-                    v = func(*args, **kwargs)
-                    # in case of a race, prefer the item already in the cache
-                    try:
-                        with lock:
-                            return cache.setdefault(k, v)
-                    except ValueError:
-                        return v  # value too large
-
-                def cache_clear():
-                    with lock:
-                        cache.clear()
-
-            cache_info = None
+            cache_info = cache_info
 
         wrapper.cache = cache
         wrapper.cache_key = key
