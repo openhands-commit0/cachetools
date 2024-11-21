@@ -28,7 +28,10 @@ _kwmark = (_HashedTuple,)
 
 def hashkey(*args, **kwargs):
     """Return a cache key for the specified hashable arguments."""
-    pass
+    if kwargs:
+        return _HashedTuple(args + _kwmark + tuple(sorted(kwargs.items())))
+    else:
+        return _HashedTuple(args)
 
 def methodkey(self, *args, **kwargs):
     """Return a cache key for use with cached methods."""
