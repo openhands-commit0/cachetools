@@ -739,7 +739,7 @@ def cached(cache, key=keys.hashkey, lock=None, info=True):
         wrapper.cache_key = key
         wrapper.cache_lock = lock
         wrapper.cache_clear = cache_clear
-        wrapper.cache_info = cache_info
+        wrapper.cache_info = cache_info if info else None
 
         return functools.update_wrapper(wrapper, func)
 
