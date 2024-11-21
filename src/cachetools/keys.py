@@ -30,8 +30,7 @@ def hashkey(*args, **kwargs):
     """Return a cache key for the specified hashable arguments."""
     if kwargs:
         return _HashedTuple(args + _kwmark + tuple(sorted(kwargs.items())))
-    else:
-        return _HashedTuple(args)
+    return _HashedTuple(args)
 
 def methodkey(self, *args, **kwargs):
     """Return a cache key for use with cached methods."""
@@ -41,7 +40,8 @@ def typedkey(*args, **kwargs):
     """Return a typed cache key for the specified hashable arguments."""
     key = hashkey(*args, **kwargs)
     key += tuple(type(arg) for arg in args)
-    key += tuple(type(val) for val in sorted(kwargs.values()))
+    if kwargs:
+        key += tuple(type(val) for val in sorted(kwargs.values()))
     return key
 
 def typedmethodkey(self, *args, **kwargs):
