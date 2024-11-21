@@ -61,7 +61,9 @@ def rr_cache(maxsize=128, choice=random.choice, typed=False):
     algorithm.
 
     """
-    pass
+    lock = RLock()
+    key_func = keys.typedkey if typed else keys.hashkey
+    return cached(cache=RRCache(maxsize, choice=choice), key=key_func, lock=lock)
 
 def ttl_cache(maxsize=128, ttl=600, timer=time.monotonic, typed=False):
     """Decorator to wrap a function with a memoizing callable that saves
