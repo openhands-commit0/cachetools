@@ -35,7 +35,7 @@ def hashkey(*args, **kwargs):
 
 def methodkey(self, *args, **kwargs):
     """Return a cache key for use with cached methods."""
-    pass
+    return hashkey(*args, **kwargs)
 
 def typedkey(*args, **kwargs):
     """Return a typed cache key for the specified hashable arguments."""
