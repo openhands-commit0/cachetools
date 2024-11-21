@@ -32,7 +32,9 @@ def lfu_cache(maxsize=128, typed=False):
     algorithm.
 
     """
-    pass
+    lock = RLock()
+    key_func = keys.typedkey if typed else keys.hashkey
+    return cached(cache=LFUCache(maxsize), key=key_func, lock=lock)
 
 def lru_cache(maxsize=128, typed=False):
     """Decorator to wrap a function with a memoizing callable that saves
