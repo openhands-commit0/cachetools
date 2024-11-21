@@ -51,7 +51,9 @@ def mru_cache(maxsize=128, typed=False):
     up to `maxsize` results based on a Most Recently Used (MRU)
     algorithm.
     """
-    pass
+    lock = RLock()
+    key_func = keys.typedkey if typed else keys.hashkey
+    return cached(cache=MRUCache(maxsize), key=key_func, lock=lock)
 
 def rr_cache(maxsize=128, choice=random.choice, typed=False):
     """Decorator to wrap a function with a memoizing callable that saves
